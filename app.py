@@ -12,67 +12,28 @@ states = ["Morning", "Afternoon", "Evening"]
 actions = ["News", "Social", "Market", "Entertainment", "No Notification"]
 
 notifications = {
-
     "Morning": {
-        "News": [
-            "Good Morning! Here are today’s top headlines.",
-            "Weather Update: Expect light showers today."
-        ],
-        "Social": [
-            "You have 5 new notifications.",
-            "Your friend tagged you in a post."
-        ],
-        "Market": [
-            "Stock Market Opening Update.",
-            "Nifty expected to rise today."
-        ],
-        "Entertainment": [
-            "Start your day with trending songs.",
-            "Daily horoscope is ready."
-        ]
+        "News": ["🌅 Top headlines to start your day.", "☀ Weather looks great today!"],
+        "Social": ["👥 You have new notifications.", "📸 Someone tagged you in a photo."],
+        "Market": ["📈 Market opening update.", "💹 Stocks expected to rise."],
+        "Entertainment": ["🎵 Trending morning playlist ready.", "🔮 Your daily horoscope is here."]
     },
-
     "Afternoon": {
-        "News": [
-            "Midday News Briefing.",
-            "Live updates on current events."
-        ],
-        "Social": [
-            "Someone reacted to your story.",
-            "You have unread messages."
-        ],
-        "Market": [
-            "Midday Market Update.",
-            "Stock Alert: Price fluctuation detected."
-        ],
-        "Entertainment": [
-            "Trending videos you may like.",
-            "Lunch break watch recommendations."
-        ]
+        "News": ["📰 Midday news briefing.", "⚽ Live sports update."],
+        "Social": ["💬 You have unread messages.", "🔥 Your post is trending."],
+        "Market": ["📊 Midday market analysis.", "💰 Investment alert triggered."],
+        "Entertainment": ["📺 Trending videos for lunch break.", "🎬 Recommended short clips."]
     },
-
     "Evening": {
-        "News": [
-            "Evening Headlines Summary.",
-            "Top stories you missed today."
-        ],
-        "Social": [
-            "Your post is getting attention.",
-            "New comments on your photo."
-        ],
-        "Market": [
-            "Market Closing Report.",
-            "Daily profit/loss summary."
-        ],
-        "Entertainment": [
-            "Your favorite show just dropped a new episode.",
-            "Recommended movies for tonight."
-        ]
+        "News": ["🌙 Evening headline summary.", "📢 Top stories you missed."],
+        "Social": ["❤️ Someone liked your post.", "👀 New profile view."],
+        "Market": ["📉 Market closing report.", "💵 Daily portfolio summary."],
+        "Entertainment": ["🍿 New episode released!", "🎥 Recommended movie tonight."]
     }
 }
 
 # -----------------------------
-# SESSION STATE INITIALIZATION
+# SESSION STATE
 # -----------------------------
 
 if "q_table" not in st.session_state:
@@ -81,18 +42,23 @@ if "q_table" not in st.session_state:
 if "epsilon" not in st.session_state:
     st.session_state.epsilon = 1.0
 
-if "last_action" not in st.session_state:
-    st.session_state.last_action = None
+if "current_notification" not in st.session_state:
+    st.session_state.current_notification = None
 
-if "last_state" not in st.session_state:
-    st.session_state.last_state = None
+if "state_index" not in st.session_state:
+    st.session_state.state_index = None
 
+if "action_index" not in st.session_state:
+    st.session_state.action_index = None
 
 # -----------------------------
-# Q LEARNING UPDATE FUNCTION
+# Q UPDATE FUNCTION
 # -----------------------------
 
-def update_q(state_index, action_index, reward):
+def update_q(reward):
+
+    state_index = st.session_state.state_index
+    action_index = st.session_state.action_index
 
     learning_rate = 0.1
     discount_factor = 0.9
@@ -106,86 +72,90 @@ def update_q(state_index, action_index, reward):
 
     st.session_state.q_table[state_index, action_index] = new_value
 
-    # Epsilon decay
     if st.session_state.epsilon > 0.05:
-        st.session_state.epsilon *= 0.99
+        st.session_state.epsilon *= 0.98
 
 
 # -----------------------------
-# UI
+# UI START
 # -----------------------------
 
-st.title("🤖 Smart Notification System (RL Based)")
-st.write("The system learns what notification you like at different times.")
+st.title("🤖 Smart Notification System")
+st.caption("This system learns what you like at different times of the day.")
 
-selected_time = st.selectbox("Select Time of Day", states)
+st.subheader("Choose Time of Day")
 
-state_index = states.index(selected_time)
+col1, col2, col3 = st.columns(3)
 
-# -----------------------------
-# SEND NOTIFICATION BUTTON
-# -----------------------------
+if col1.button("🌅 Morning"):
+    st.session_state.state_index = 0
 
-if st.button("Send Smart Notification"):
+if col2.button("☀ Afternoon"):
+    st.session_state.state_index = 1
 
-    # Epsilon-Greedy
-    if random.uniform(0, 1) < st.session_state.epsilon:
-        action_index = random.randint(0, len(actions) - 1)
-    else:
-        action_index = np.argmax(st.session_state.q_table[state_index])
-
-    chosen_action = actions[action_index]
-
-    st.session_state.last_action = action_index
-    st.session_state.last_state = state_index
-
-    st.subheader("System Chose:")
-    st.write(chosen_action)
-
-    if chosen_action == "No Notification":
-        st.info("No notification sent.")
-    else:
-        message = random.choice(notifications[selected_time][chosen_action])
-        st.success(message)
+if col3.button("🌙 Evening"):
+    st.session_state.state_index = 2
 
 
 # -----------------------------
-# FEEDBACK SECTION
+# GENERATE NOTIFICATION
 # -----------------------------
 
-if st.session_state.last_action is not None:
+if st.session_state.state_index is not None:
 
-    st.write("Did you engage with the notification?")
+    state_index = st.session_state.state_index
+    current_state = states[state_index]
 
-    col1, col2 = st.columns(2)
+    if st.session_state.current_notification is None:
 
-    with col1:
-        if st.button("👍 Yes"):
-            update_q(
-                st.session_state.last_state,
-                st.session_state.last_action,
-                reward=10
-            )
-            st.success("Positive reward given!")
+        # Epsilon-greedy
+        if random.uniform(0, 1) < st.session_state.epsilon:
+            action_index = random.randint(0, len(actions) - 1)
+        else:
+            action_index = np.argmax(st.session_state.q_table[state_index])
 
-    with col2:
-        if st.button("👎 No"):
-            update_q(
-                st.session_state.last_state,
-                st.session_state.last_action,
-                reward=-5
-            )
-            st.error("Negative reward given!")
+        st.session_state.action_index = action_index
+        chosen_action = actions[action_index]
+
+        if chosen_action == "No Notification":
+            st.session_state.current_notification = "No notification sent."
+        else:
+            message = random.choice(notifications[current_state][chosen_action])
+            st.session_state.current_notification = message
+
+    st.markdown("### 📲 Notification")
+    st.info(st.session_state.current_notification)
+
+    if st.session_state.current_notification != "No notification sent.":
+
+        col1, col2 = st.columns(2)
+
+        if col1.button("👍 I Engaged"):
+            update_q(10)
+            st.success("Model Learned from Positive Feedback!")
+            st.session_state.current_notification = None
+
+        if col2.button("👎 Ignored"):
+            update_q(-5)
+            st.error("Model Learned from Negative Feedback!")
+            st.session_state.current_notification = None
 
 
 # -----------------------------
-# DISPLAY Q TABLE
+# RESET BUTTON
 # -----------------------------
 
-st.subheader("📊 Q Table")
-st.dataframe(
-    st.session_state.q_table,
-    use_container_width=True
-)
+if st.button("🔄 Reset Learning"):
+    st.session_state.q_table = np.zeros((len(states), len(actions)))
+    st.session_state.epsilon = 1.0
+    st.session_state.current_notification = None
+    st.success("Model Reset!")
 
-st.write("Current Epsilon:", round(st.session_state.epsilon, 3))
+# -----------------------------
+# HIDDEN DEBUG PANEL
+# -----------------------------
+
+with st.expander("📊 View Learning Data"):
+    st.write("Q Table")
+    st.dataframe(st.session_state.q_table)
+    st.write("Epsilon:", round(st.session_state.epsilon, 3))
