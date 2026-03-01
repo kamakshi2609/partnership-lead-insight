@@ -33,7 +33,7 @@ notifications = {
 }
 
 # -----------------------------
-# SESSION STATE
+# SESSION STATE INIT
 # -----------------------------
 
 if "q_table" not in st.session_state:
@@ -52,7 +52,7 @@ if "action_index" not in st.session_state:
     st.session_state.action_index = None
 
 # -----------------------------
-# Q UPDATE FUNCTION
+# Q-LEARNING UPDATE
 # -----------------------------
 
 def update_q(reward):
@@ -72,6 +72,7 @@ def update_q(reward):
 
     st.session_state.q_table[state_index, action_index] = new_value
 
+    # Decay exploration
     if st.session_state.epsilon > 0.05:
         st.session_state.epsilon *= 0.98
 
@@ -81,7 +82,7 @@ def update_q(reward):
 # -----------------------------
 
 st.title("🤖 Smart Notification System")
-st.caption("This system learns what you like at different times of the day.")
+st.caption("This system learns what you prefer at different times of the day.")
 
 st.subheader("Choose Time of Day")
 
@@ -89,12 +90,15 @@ col1, col2, col3 = st.columns(3)
 
 if col1.button("🌅 Morning"):
     st.session_state.state_index = 0
+    st.session_state.current_notification = None
 
 if col2.button("☀ Afternoon"):
     st.session_state.state_index = 1
+    st.session_state.current_notification = None
 
 if col3.button("🌙 Evening"):
     st.session_state.state_index = 2
+    st.session_state.current_notification = None
 
 
 # -----------------------------
@@ -108,7 +112,7 @@ if st.session_state.state_index is not None:
 
     if st.session_state.current_notification is None:
 
-        # Epsilon-greedy
+        # Epsilon-greedy action selection
         if random.uniform(0, 1) < st.session_state.epsilon:
             action_index = random.randint(0, len(actions) - 1)
         else:
@@ -118,32 +122,49 @@ if st.session_state.state_index is not None:
         chosen_action = actions[action_index]
 
         if chosen_action == "No Notification":
-            st.session_state.current_notification = "No notification sent."
+            st.session_state.current_notification = "🔕 No notification sent."
         else:
             message = random.choice(notifications[current_state][chosen_action])
             st.session_state.current_notification = message
 
+    # Show Notification
     st.markdown("### 📲 Notification")
     st.info(st.session_state.current_notification)
 
-    if st.session_state.current_notification != "No notification sent.":
+    # -----------------------------
+    # FEEDBACK SECTION (WORKS FOR ALL CASES)
+    # -----------------------------
 
-        col1, col2 = st.columns(2)
+    st.markdown("### 🧠 Your Feedback")
 
-        if col1.button("👍 I Engaged"):
-            update_q(10)
-            st.success("Model Learned from Positive Feedback!")
-            st.session_state.current_notification = None
+    col1, col2 = st.columns(2)
 
-        if col2.button("👎 Ignored"):
-            update_q(-5)
-            st.error("Model Learned from Negative Feedback!")
-            st.session_state.current_notification = None
+    if col1.button("👍 Good Choice"):
+
+        if st.session_state.current_notification == "🔕 No notification sent.":
+            update_q(5)      # silence rewarded
+        else:
+            update_q(10)     # notification rewarded
+
+        st.success("Model Learned from Positive Feedback!")
+        st.session_state.current_notification = None
+
+    if col2.button("👎 Bad Choice"):
+
+        if st.session_state.current_notification == "🔕 No notification sent.":
+            update_q(-2)     # silence punished
+        else:
+            update_q(-5)     # notification punished
+
+        st.error("Model Learned from Negative Feedback!")
+        st.session_state.current_notification = None
 
 
 # -----------------------------
 # RESET BUTTON
 # -----------------------------
+
+st.markdown("---")
 
 if st.button("🔄 Reset Learning"):
     st.session_state.q_table = np.zeros((len(states), len(actions)))
@@ -151,11 +172,12 @@ if st.button("🔄 Reset Learning"):
     st.session_state.current_notification = None
     st.success("Model Reset!")
 
+
 # -----------------------------
-# HIDDEN DEBUG PANEL
+# DEBUG PANEL
 # -----------------------------
 
 with st.expander("📊 View Learning Data"):
-    st.write("Q Table")
+    st.write("Q-Table")
     st.dataframe(st.session_state.q_table)
-    st.write("Epsilon:", round(st.session_state.epsilon, 3))
+    st.write("Exploration (epsilon):", round(st.session_state.epsilon, 3))
