@@ -139,7 +139,7 @@ if st.session_state.state_index is not None:
 
     col1, col2 = st.columns(2)
 
-    if col1.button("👍 Good Choice"):
+    if col1.button("Engaged 👍🏼"):
 
         if st.session_state.current_notification == "🔕 No notification sent.":
             update_q(5)      # silence rewarded
@@ -149,7 +149,7 @@ if st.session_state.state_index is not None:
         st.success("Model Learned from Positive Feedback!")
         st.session_state.current_notification = None
 
-    if col2.button("👎 Bad Choice"):
+    if col2.button("Ignored 👎"):
 
         if st.session_state.current_notification == "🔕 No notification sent.":
             update_q(-2)     # silence punished
